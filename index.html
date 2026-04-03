@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather App</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+    text-align: center;
+    background: linear-gradient(135deg, #4b6cb7, #182848);
+    transition: 0.5s;
+}
+
+/* Container */
+.container {
+    max-width: 400px;
+    margin: auto;
+    padding: 15px;
+}
+
+/* Glass Card */
+.card {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(20px);
+    border-radius: 25px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+/* Search */
+.search-box {
+    display: flex;
+    margin-top: 10px;
+}
+
+input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px 0 0 10px;
+    border: none;
+}
+
+button {
+    padding: 12px;
+    border: none;
+    background: #00c6ff;
+    color: white;
+    border-radius: 0 10px 10px 0;
+    cursor: pointer;
+}
+
+/* Temp */
+.temp {
+    font-size: 50px;
+    margin: 10px 0;
+}
+
+/* Info */
+.info {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+}
+
+/* Hourly */
+.hourly {
+    display: flex;
+    overflow-x: auto;
+}
+
+.hour {
+    margin: 10px;
+    text-align: center;
+}
+
+/* Mobile */
+@media (max-width:500px) {
+    .temp { font-size: 40px; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Weather App ☁️</h1>
+
+    <!-- SEARCH -->
+    <div class="search-box">
+        <input type="text" id="city" placeholder="Enter city...">
+        <button onclick="getWeather()">🔍</button>
+    </div>
+
+    <br>
+
+    <!-- LOCATION -->
+    <button onclick="getLocation()">📍 Use My Location</button>
+
+    <!-- CURRENT -->
+    <div class="card">
+        <h2 id="location">--</h2>
+        <img id="icon" width="80">
+        <div class="temp" id="temp">--°C</div>
+        <p id="condition">---</p>
+
+        <div class="info">
+            <div>💧 <span id="humidity"></span>%</div>
+            <div>🌬 <span id="wind"></span> km/h</div>
+            <div>⚡ <span id="pressure"></span> hPa</div>
+        </div>
+    </div>
+
+    <!-- HOURLY -->
+    <div class="card">
+        <h3>Next Hours</h3>
+        <div class="hourly" id="hourly"></div>
+    </div>
+
+    <!-- TOMORROW -->
+    <div class="card">
+        <h3>Tomorrow</h3>
+        <p id="tomorrow"></p>
+    </div>
+
+</div>
+
+<script>
+
+const API_KEY = "55bf73f400e7a3121795250253f9ad4f";
+
+// AUTO LOCATION
+navigator.geolocation.getCurrentPosition(pos => {
+    getWeatherByCoords(pos.coords.latitude, pos.coords.longitude);
+});
+
+// SEARCH
+async function getWeather() {
+    const city = document.getElementById("city").value;
+    getWeatherByCity(city);
+}
+
+// BY CITY
+async function getWeatherByCity(city) {
+    const res = await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${API_KEY}`
+    );
+    const data = await res.json();
+    updateUI(data);
+}
+
+// BY COORDS
+async function getWeatherByCoords(lat, lon) {
+    const res = await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`
+    );
+    const data = await res.json();
+    updateUI(data);
+}
+
+// LOCATION BUTTON
+function getLocation() {
+    navigator.geolocation.getCurrentPosition(pos => {
+        getWeatherByCoords(pos.coords.latitude, pos.coords.longitude);
+    });
+}
+
+// UPDATE UI
+function updateUI(data) {
+
+    const current = data.list[0];
+
+    document.getElementById("location").innerText = data.city.name;
+    document.getElementById("temp").innerText = current.main.temp + "°C";
+    document.getElementById("condition").innerText = current.weather[0].description;
+
+    document.getElementById("humidity").innerText = current.main.humidity;
+    document.getElementById("wind").innerText = current.wind.speed;
+    document.getElementById("pressure").innerText = current.main.pressure;
+
+    // ICON
+    const icon = current.weather[0].icon;
+    document.getElementById("icon").src =
+        `https://openweathermap.org/img/wn/${icon}@2x.png`;
+
+    changeBackground(current.weather[0].main);
+
+    // HOURLY
+    let html = "";
+    for (let i = 0; i < 6; i++) {
+        const item = data.list[i];
+        const time = item.dt_txt.split(" ")[1].slice(0,5);
+
+        html += `
+        <div class="hour">
+            <p>${time}</p>
+            <img src="https://openweathermap.org/img/wn/${item.weather[0].icon}.png">
+            <p>${item.main.temp}°C</p>
+        </div>
+        `;
+    }
+    document.getElementById("hourly").innerHTML = html;
+
+    // TOMORROW
+    const tomorrow = data.list[8];
+    document.getElementById("tomorrow").innerText =
+        tomorrow.main.temp + "°C - " + tomorrow.weather[0].description;
+}
+
+// BACKGROUND
+function changeBackground(condition) {
+    if (condition === "Clear") {
+        document.body.style.background = "linear-gradient(#f6d365,#fda085)";
+    } else if (condition === "Clouds") {
+        document.body.style.background = "linear-gradient(#bdc3c7,#2c3e50)";
+    } else if (condition === "Rain") {
+        document.body.style.background = "linear-gradient(#4facfe,#00f2fe)";
+    }
+}
+
+</script>
+
+</body>
+</html>
